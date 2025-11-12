@@ -1,0 +1,108 @@
+import { useMemo, useState } from 'react';
+import { BsArrowsMove, BsTrash } from 'react-icons/bs';
+import { useSimulatorStore } from '../state/simulatorStore';
+import ModuleIcon from './ModuleIcon';
+
+const ModuleInspector = () => {
+  const modules = useSimulatorStore((state) => state.placedModules);
+  const updateModuleTransform = useSimulatorStore((state) => state.updateModuleTransform);
+  const removeModule = useSimulatorStore((state) => state.removeModule);
+  const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
+
+  const selectedModule = useMemo(
+    () => modules.find((module) => module.instanceId === selectedInstance) ?? modules[0] ?? null,
+    [modules, selectedInstance]
+  );
+
+  return (
+    <div className="flex h-full flex-col gap-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white">Module Inspector</h2>
+        <p className="text-sm text-slate-300">
+          Fine-tune placement, orientation and metadata for imported modules across schematic and 3D workspaces.
+        </p>
+      </div>
+      {modules.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/70 p-6 text-center text-sm text-slate-400">
+          Import a module to begin configuring its position and connections.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+            {modules.map((module) => (
+              <button
+                key={module.instanceId}
+                onClick={() => setSelectedInstance(module.instanceId)}
+                className={`flex min-w-[160px] flex-col gap-2 rounded-xl border px-3 py-2 text-left text-sm transition ${
+                  selectedModule?.instanceId === module.instanceId
+                    ? 'border-brand-400/70 bg-brand-500/20 text-white'
+                    : 'border-slate-800/70 bg-slate-900/70 text-slate-300 hover:border-brand-400/50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ModuleIcon icon={module.icon} className="text-lg text-brand-200" />
+                  <span className="font-semibold text-white">{module.name}</span>
+                </div>
+                <p className="text-xs text-slate-400">{module.description}</p>
+              </button>
+            ))}
+          </div>
+          {selectedModule && (
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/70 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-white">{selectedModule.name}</h3>
+                  <p className="text-xs text-slate-400">Instance ID: {selectedModule.instanceId}</p>
+                </div>
+                <button
+                  onClick={() => removeModule(selectedModule.instanceId)}
+                  className="flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-200 hover:bg-rose-500/20"
+                >
+                  <BsTrash /> Remove
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
+                {(['x', 'y', 'z'] as const).map((axis) => (
+                  <label key={axis} className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2 text-slate-300">
+                      <BsArrowsMove /> Position {axis.toUpperCase()} (mm)
+                    </span>
+                    <input
+                      type="number"
+                      value={selectedModule.position[axis]}
+                      onChange={(event) =>
+                        updateModuleTransform(selectedModule.instanceId, {
+                          position: { [axis]: Number(event.target.value) } as Record<typeof axis, number>
+                        })
+                      }
+                      className="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-slate-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400/50"
+                    />
+                  </label>
+                ))}
+                {(['x', 'y', 'z'] as const).map((axis) => (
+                  <label key={`rot-${axis}`} className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2 text-slate-300">
+                      <BsArrowsMove /> Rotation {axis.toUpperCase()} (°)
+                    </span>
+                    <input
+                      type="number"
+                      value={selectedModule.rotation[axis]}
+                      onChange={(event) =>
+                        updateModuleTransform(selectedModule.instanceId, {
+                          rotation: { [axis]: Number(event.target.value) } as Record<typeof axis, number>
+                        })
+                      }
+                      className="rounded-lg border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-slate-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400/50"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ModuleInspector;
