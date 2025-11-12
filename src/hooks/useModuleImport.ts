@@ -54,8 +54,84 @@ const fallbackModule = (url: string, boardId: string): ModuleMetadata => {
     category: 'sensor',
     compatibleBoards: [board.id],
     status: 'partial',
-    dimensions: { width: 30, height: 30, depth: 10 }
+    dimensions: { width: 30, height: 30, depth: 10 },
+    electrical: {
+      supplyVoltage: '3.3 V',
+      typicalCurrentMa: 25,
+      ioPins: 2,
+      interfaces: ['GPIO']
+    },
+    mechanical: { weightGrams: 8 }
   };
+};
+
+const detectInterfaces = (content: string): string[] => {
+  const possible = [
+    ['I2C', /(i2c|i²c)/i],
+    ['SPI', /\bspi\b/i],
+    ['UART', /\buart\b|serial/i],
+    ['CAN', /\bcan ?bus\b/i],
+    ['USB', /\busb\b/i],
+    ['Ethernet', /ethernet/i],
+    ['PWM', /\bpwm\b/i],
+    ['Power', /dc\s*input|power\s*(?:in|out)/i]
+  ] as const;
+  const found = possible
+    .filter(([, regex]) => regex.test(content))
+    .map(([label]) => label);
+  return found.length ? found : ['GPIO'];
+};
+
+const extractVoltageRange = (content: string): string => {
+  const match = content.match(/(\d+(?:\.\d+)?)\s*(?:–|-|to)\s*(\d+(?:\.\d+)?)\s*(?:v|volt)/i);
+  if (match) {
+    return `${parseFloat(match[1]).toFixed(match[1].includes('.') ? 1 : 0)}–${parseFloat(match[2]).toFixed(match[2].includes('.') ? 1 : 0)} V`;
+  }
+  const single = content.match(/(\d+(?:\.\d+)?)\s*(?:v|volt)/i);
+  if (single) {
+    return `${parseFloat(single[1]).toFixed(single[1].includes('.') ? 1 : 0)} V`;
+  }
+  return '3.3 V';
+};
+
+const extractCurrentMa = (content: string): number => {
+  const currentMatch = content.match(/(\d+(?:\.\d+)?)\s*(mA|uA|A)\b[^.]*?(?:current|consumption|draw|typical)/i);
+  if (currentMatch) {
+    const value = parseFloat(currentMatch[1]);
+    const unit = currentMatch[2].toLowerCase();
+    if (unit === 'ua') return Math.max(0.01, value / 1000);
+    if (unit === 'a') return value * 1000;
+    return value;
+  }
+  const fallback = content.match(/(\d+(?:\.\d+)?)\s*(mA|uA|A)/i);
+  if (fallback) {
+    const value = parseFloat(fallback[1]);
+    const unit = fallback[2].toLowerCase();
+    if (unit === 'ua') return Math.max(0.01, value / 1000);
+    if (unit === 'a') return value * 1000;
+    return value;
+  }
+  return 50;
+};
+
+const extractPinCount = (content: string): number => {
+  const pinMatch = content.match(/(\d{1,3})\s*(?:gpio|i\/o|io|pin|pins)/i);
+  if (pinMatch) {
+    return Number(pinMatch[1]);
+  }
+  const channelMatch = content.match(/(\d{1,2})\s*(?:channel|axis|port)/i);
+  if (channelMatch) {
+    return Number(channelMatch[1]);
+  }
+  return 2;
+};
+
+const extractWeight = (content: string): number | undefined => {
+  const match = content.match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  if (match) {
+    return Number.parseFloat(match[1]);
+  }
+  return undefined;
 };
 
 const buildModuleFromContent = (url: string, content: string, boardId: string): ModuleMetadata => {
@@ -63,6 +139,11 @@ const buildModuleFromContent = (url: string, content: string, boardId: string): 
   const titleLine = lines.find((line) => line.length > 6) ?? 'Custom Module';
   const dimsMatch = content.match(/(\d+\.?\d*)\s*(mm|millimeter)/i);
   const width = dimsMatch ? Math.min(80, Math.max(18, parseFloat(dimsMatch[1]))) : 30;
+  const supplyVoltage = extractVoltageRange(content);
+  const typicalCurrentMa = extractCurrentMa(content);
+  const ioPins = extractPinCount(content);
+  const interfaces = detectInterfaces(content);
+  const weightGrams = extractWeight(content);
   return {
     id: `imported-${Date.now()}`,
     name: titleLine.substring(0, 48),
@@ -71,7 +152,14 @@ const buildModuleFromContent = (url: string, content: string, boardId: string): 
     category: 'sensor',
     compatibleBoards: [boardId],
     status: 'partial',
-    dimensions: { width, height: width * 0.7, depth: 12 }
+    dimensions: { width, height: width * 0.7, depth: 12 },
+    electrical: {
+      supplyVoltage,
+      typicalCurrentMa,
+      ioPins,
+      interfaces
+    },
+    mechanical: weightGrams ? { weightGrams } : undefined
   };
 };
 
@@ -156,7 +244,14 @@ export const useModuleImport = () => {
           dimensions: {
             ...module.dimensions,
             ...externalResult.module.dimensions
-          }
+          },
+          electrical: {
+            ...module.electrical,
+            ...(externalResult.module.electrical ?? {})
+          },
+          mechanical: externalResult.module.mechanical
+            ? { ...module.mechanical, ...externalResult.module.mechanical }
+            : module.mechanical
         };
       }
       if (externalResult?.message) {
@@ -178,7 +273,14 @@ export const useModuleImport = () => {
               dimensions: {
                 ...module.dimensions,
                 ...customModule.dimensions
-              }
+              },
+              electrical: {
+                ...module.electrical,
+                ...(customModule.electrical ?? {})
+              },
+              mechanical: customModule.mechanical
+                ? { ...module.mechanical, ...customModule.mechanical }
+                : module.mechanical
             };
           }
         } catch (customError) {

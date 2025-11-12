@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ModuleMetadata } from '../types';
-import { defaultBoard } from '../data/boards';
+import { boards, defaultBoard } from '../data/boards';
 
 export type WorkspaceView = 'schematic' | 'threeD' | 'split';
 
@@ -31,6 +31,8 @@ interface SimulatorState {
     }>
   ) => void;
   setWorkspaceView: (view: WorkspaceView) => void;
+  splitRatio: number;
+  setSplitRatio: (ratio: number) => void;
   reset: () => void;
 }
 
@@ -39,6 +41,7 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
   workspaceView: 'split',
   placedModules: [],
   wireConnections: [],
+  splitRatio: 0.5,
   setBoard: (boardId) =>
     set((state) => ({
       selectedBoardId: boardId,
@@ -47,17 +50,24 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
       )
     })),
   addModule: (module) =>
-    set((state) => ({
-      placedModules: [
-        ...state.placedModules,
-        {
-          ...module,
-          instanceId: `${module.id}-${Date.now()}`,
-          position: { x: Math.random() * 160 - 80, y: Math.random() * 120 - 60, z: 0 },
-          rotation: { x: 0, y: 0, z: 0 }
-        }
-      ]
-    })),
+    set((state) => {
+      const board = boards.find((item) => item.id === state.selectedBoardId) ?? defaultBoard;
+      const width = board.dimensions.width;
+      const height = board.dimensions.height;
+      const randomX = Math.random() * width - width / 2;
+      const randomY = Math.random() * height - height / 2;
+      return {
+        placedModules: [
+          ...state.placedModules,
+          {
+            ...module,
+            instanceId: `${module.id}-${Date.now()}`,
+            position: { x: randomX, y: randomY, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 }
+          }
+        ]
+      };
+    }),
   removeModule: (instanceId) =>
     set((state) => ({
       placedModules: state.placedModules.filter((module) => module.instanceId !== instanceId)
@@ -75,11 +85,14 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
       )
     })),
   setWorkspaceView: (view) => set({ workspaceView: view }),
+  setSplitRatio: (ratio) =>
+    set(() => ({ splitRatio: Math.min(0.8, Math.max(0.2, ratio)) })),
   reset: () =>
     set({
       selectedBoardId: defaultBoard.id,
       workspaceView: 'split',
       placedModules: [],
-      wireConnections: []
+      wireConnections: [],
+      splitRatio: 0.5
     })
 }));
