@@ -65,10 +65,12 @@ Simulation Theory is a web-based hardware simulation environment that fuses sche
 
 ## Deployment to GitHub Pages
 
-1. Update the `homepage` field in `package.json` if deploying to a subpath (e.g., `https://username.github.io/simulation-theory`).
-2. Build the project: `npm run build`.
-3. Copy the `dist/` directory to your GitHub Pages branch (e.g., `gh-pages`).
-4. Commit and push to publish.
+The repository ships with a GitHub Actions workflow that builds the Vite project and publishes the `dist/` folder to the `gh-pages` environment. Static assets are referenced with relative paths (`base: './'` in `vite.config.ts`), so the bundle works automatically under project pages such as `https://username.github.io/simulation-theory/`.
+
+1. Push the project to GitHub with a default branch named `main`.
+2. Navigate to **Settings → Pages** and choose **GitHub Actions** as the deployment source. The included `Deploy Simulation Theory to GitHub Pages` workflow will appear in the history.
+3. Trigger a deployment by pushing to `main` or by running the workflow manually via **Actions → Deploy Simulation Theory to GitHub Pages → Run workflow**.
+4. Wait for the workflow to finish; GitHub will display the live URL once the `deploy` job completes.
 
 ## Importing Modules from the Web
 
