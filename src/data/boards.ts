@@ -1,339 +1,407 @@
 import type { Board } from '../types';
 
-const baseSvg = (label: string) => `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120">
-  <rect x="10" y="10" width="180" height="100" rx="12" ry="12" fill="#1d61db" opacity="0.2" stroke="#1d61db" stroke-width="4" />
-  <text x="100" y="65" font-size="18" fill="#1d61db" text-anchor="middle" font-family="'Segoe UI', sans-serif">${label}</text>
+interface ConnectorZone {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+}
+
+const createFootprintSvg = (
+  label: string,
+  width: number,
+  height: number,
+  connectors: ConnectorZone[]
+) => {
+  const connectorMarkup = connectors
+    .map(
+      (connector) => `
+        <g>
+          <rect x="${connector.x}" y="${connector.y}" width="${connector.width}" height="${connector.height}" rx="1.6" ry="1.6" fill="rgba(56,189,248,0.22)" stroke="rgba(14,165,233,0.7)" stroke-width="0.8" />
+          <text x="${connector.x + connector.width / 2}" y="${connector.y + connector.height / 2 + 2}" font-size="4" fill="rgba(148,163,184,0.9)" font-family="'Inter', 'Segoe UI', sans-serif" text-anchor="middle">${connector.label}</text>
+        </g>
+      `
+    )
+    .join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <linearGradient id="boardGradient" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="4" ry="4" fill="url(#boardGradient)" stroke="#1d4ed8" stroke-width="1.2" />
+  ${connectorMarkup}
+  <text x="${width / 2}" y="${height / 2}" font-size="6" fill="#f8fafc" font-family="'Inter', 'Segoe UI', sans-serif" text-anchor="middle">${label}</text>
 </svg>`;
-
-const createBoards = (names: string[], category: Board['category']): Board[] =>
-  names.map((name, index) => ({
-    id: `${category}-${index + 1}`,
-    name,
-    category,
-    manufacturer: name.split(' ')[0],
-    description: `${name} development board ready for Simulation Theory virtual prototyping.`,
-    specs: {
-      'GPIO Pins': category === 'fpga' ? 200 - index : 40,
-      'Operating Voltage': '3.3V/5V',
-      'Connectivity': category === 'arduino' ? 'USB, UART, SPI, I2C' : 'Gigabit Ethernet, USB 3.0, WiFi',
-      'Form Factor': 'Standard'
-    },
-    image: `https://dummyimage.com/600x400/1d61db/ffffff&text=${encodeURIComponent(name)}`,
-    svgFootprint: baseSvg(name)
-  }));
-
-const arduinoBoards = [
-  'Arduino Uno R3',
-  'Arduino Mega 2560 Rev3',
-  'Arduino Nano',
-  'Arduino Nano Every',
-  'Arduino Nano 33 BLE',
-  'Arduino Nano 33 IoT',
-  'Arduino Nano 33 BLE Sense',
-  'Arduino Due',
-  'Arduino Leonardo',
-  'Arduino Micro',
-  'Arduino MKR WiFi 1010',
-  'Arduino MKR Zero',
-  'Arduino MKR FOX 1200',
-  'Arduino MKR WAN 1310',
-  'Arduino MKR GSM 1400',
-  'Arduino MKR NB 1500',
-  'Arduino MKR Vidor 4000',
-  'Arduino Portenta H7',
-  'Arduino Portenta X8',
-  'Arduino Portenta C33',
-  'Arduino Giga R1 WiFi',
-  'Arduino Nicla Sense ME',
-  'Arduino Nicla Vision',
-  'Arduino Nicla Voice',
-  'Arduino Opta PLC',
-  'Arduino Yún Rev2',
-  'Arduino Esplora',
-  'Arduino Industrial 101',
-  'Arduino Pro Mini',
-  'Arduino Fio',
-  'Arduino Zero',
-  'Arduino MKR1000',
-  'Arduino Tian',
-  'Arduino Tre',
-  'Arduino BT',
-  'Arduino Ethernet Rev3',
-  'Arduino Robot Control',
-  'Arduino Robot Motor',
-  'Arduino LilyPad USB',
-  'Arduino LilyPad Simple',
-  'Arduino LilyPad SimpleSnap',
-  'Arduino LilyPad Main Board',
-  'Arduino LilyPad ProtoSnap',
-  'Arduino Mega ADK',
-  'Arduino Starter Kit Board',
-  'Arduino Uno WiFi Rev2',
-  'Arduino Uno Mini Limited Edition',
-  'Arduino Edge Control',
-  'Arduino Portenta Machine Control',
-  'Arduino Pro Portenta Cat. M1/NB2',
-  'SparkFun RedBoard Qwiic',
-  'SparkFun RedBoard Artemis',
-  'SparkFun BlackBoard C Mod',
-  'SparkFun Thing Plus',
-  'SparkFun Thing Plus RP2040',
-  'SparkFun Pro Micro',
-  'SparkFun MicroMod Artemis',
-  'SparkFun MicroMod ESP32',
-  'SparkFun MicroMod STM32',
-  'SparkFun MicroMod Teensy',
-  'SparkFun MicroMod Weather Carrier',
-  'Adafruit Metro M4 Express',
-  'Adafruit Metro ESP32-S3',
-  'Adafruit Metro Mini',
-  'Adafruit Feather M0',
-  'Adafruit Feather M4 Express',
-  'Adafruit Feather HUZZAH',
-  'Adafruit Feather RP2040',
-  'Adafruit Feather ESP32-S3',
-  'Adafruit QT Py RP2040',
-  'Adafruit QT Py ESP32-C3',
-  'Adafruit QT Py ESP32-S2',
-  'Adafruit ItsyBitsy M4',
-  'Adafruit ItsyBitsy RP2040',
-  'Adafruit Flora',
-  'Adafruit Circuit Playground Express',
-  'Adafruit Circuit Playground Bluefruit',
-  'Adafruit Grand Central M4',
-  'Seeed XIAO RP2040',
-  'Seeed XIAO ESP32C3',
-  'Seeed XIAO nRF52840',
-  'Seeed Wio Terminal',
-  'Seeeduino Lotus',
-  'Seeeduino XIAO BLE',
-  'Seeeduino V4.2',
-  'Seeeduino Mega',
-  'DFRobot Beetle',
-  'DFRobot FireBeetle ESP32',
-  'DFRobot FireBeetle RP2040',
-  'DFRobot Bluno',
-  'Elegoo Uno R3',
-  'Elegoo Mega 2560',
-  'Keyestudio Mega 2560',
-  'Keyestudio Uno R3',
-  'RobotDyn Uno WiFi',
-  'RobotDyn Mega 2560 PRO',
-  'Waveshare Uno Max',
-  'Waveshare Core405R',
-  'Teensy 4.1',
-  'Teensy 4.0'
-];
-
-const raspberryBoards = [
-  'Raspberry Pi 5 8GB',
-  'Raspberry Pi 5 4GB',
-  'Raspberry Pi 4 Model B 8GB',
-  'Raspberry Pi 4 Model B 4GB',
-  'Raspberry Pi 4 Model B 2GB',
-  'Raspberry Pi 3 Model B+',
-  'Raspberry Pi 3 Model B',
-  'Raspberry Pi 3 Model A+',
-  'Raspberry Pi 2 Model B v1.2',
-  'Raspberry Pi Zero 2 W',
-  'Raspberry Pi Zero W',
-  'Raspberry Pi Zero WH',
-  'Raspberry Pi Zero',
-  'Raspberry Pi Compute Module 4 8GB WiFi',
-  'Raspberry Pi Compute Module 4 Lite',
-  'Raspberry Pi Compute Module 4S',
-  'Raspberry Pi Compute Module 3+',
-  'Raspberry Pi Compute Module 3 Lite',
-  'Raspberry Pi 400',
-  'Raspberry Pi Pico W',
-  'Raspberry Pi Pico',
-  'Raspberry Pi Pico H',
-  'Raspberry Pi Pico W H',
-  'Raspberry Pi Model B Rev2',
-  'Raspberry Pi Model A+',
-  'Raspberry Pi Model A',
-  'Raspberry Pi 1 Model B+',
-  'Raspberry Pi 1 Model B',
-  'Raspberry Pi 1 Model A',
-  'Raspberry Pi Zero 2 WH',
-  'Raspberry Pi 4 Compute Module IO Board',
-  'Asus Tinker Board',
-  'Asus Tinker Board S',
-  'Asus Tinker Board 2',
-  'Asus Tinker Board 2S',
-  'NVIDIA Jetson Nano 2GB',
-  'NVIDIA Jetson Nano 4GB',
-  'NVIDIA Jetson Xavier NX',
-  'NVIDIA Jetson Orin Nano',
-  'NVIDIA Jetson Orin NX',
-  'NVIDIA Jetson TX2 NX',
-  'NVIDIA Jetson AGX Orin Dev Kit',
-  'Orange Pi 5',
-  'Orange Pi 5 Plus',
-  'Orange Pi 5B',
-  'Orange Pi 4 LTS',
-  'Orange Pi 3B',
-  'Orange Pi 4B',
-  'Orange Pi One Plus',
-  'Orange Pi Zero2',
-  'Orange Pi Zero3',
-  'Orange Pi Zero Plus',
-  'Orange Pi Zero LTS',
-  'Orange Pi R1 Plus',
-  'Banana Pi M2 Zero',
-  'Banana Pi M2 Berry',
-  'Banana Pi M2 Ultra',
-  'Banana Pi M2 Pro',
-  'Banana Pi M64',
-  'Banana Pi BPI-R2 Pro',
-  'Banana Pi BPI-R3',
-  'Libre Computer AML-S905X-CC Le Potato',
-  'Libre Computer ALL-H3-CC Tritium',
-  'Libre Computer ROC-RK3328-CC Renegade',
-  'Libre Computer AML-A311D-CC Alta',
-  'Odroid C4',
-  'Odroid N2+',
-  'Odroid M1',
-  'Odroid XU4',
-  'Odroid XU4Q',
-  'Odroid HC4',
-  'Odroid HC2',
-  'Khadas VIM4',
-  'Khadas VIM3',
-  'Khadas VIM3L',
-  'Khadas VIM2 Max',
-  'Khadas Edge2 Pro',
-  'Khadas Edge2 Basic',
-  'Pine64 RockPro64',
-  'Pine64 Quartz64 Model B',
-  'Pine64 Quartz64 Model A',
-  'Pine64 ROCK64',
-  'Pine64 Pine H64 Model B',
-  'Pine64 Star64',
-  'LattePanda 3 Delta',
-  'LattePanda Alpha 864s',
-  'LattePanda Delta 432',
-  'LattePanda V1.0',
-  'UDOO Bolt V8',
-  'UDOO Bolt V3',
-  'UDOO X86 Ultra',
-  'UDOO Neo Full',
-  'UDOO Quad',
-  'Radxa ROCK 5B',
-  'Radxa ROCK 5A',
-  'Radxa Zero 3W',
-  'Radxa Zero 2 Pro',
-  'Radxa Zero',
-  'Seeed reTerminal DM'
-];
-
-const fpgaBoards = [
-  'Xilinx ZedBoard',
-  'Xilinx Kria KV260',
-  'Xilinx Kria KR260',
-  'Xilinx Spartan-7 SP701',
-  'Xilinx Spartan-6 LX9 MicroBoard',
-  'Xilinx Artix-7 AC701',
-  'Xilinx Kintex-7 KC705',
-  'Xilinx Kintex UltraScale KCU105',
-  'Xilinx Virtex UltraScale VCU118',
-  'Xilinx Virtex UltraScale+ VCU128',
-  'Xilinx ZC702 Eval Kit',
-  'Xilinx ZC706 Eval Kit',
-  'Xilinx ZCU102 Eval Kit',
-  'Xilinx ZCU104 Eval Kit',
-  'Xilinx ZCU106 Eval Kit',
-  'Xilinx VCK190 Eval Kit',
-  'Xilinx Alveo U200',
-  'Xilinx Alveo U250',
-  'Xilinx Alveo U280',
-  'Xilinx Alveo U50',
-  'Xilinx Alveo U55C',
-  'Intel DE0-Nano',
-  'Intel DE10-Nano',
-  'Intel DE10-Standard',
-  'Intel DE10-Lite',
-  'Intel DE1-SoC',
-  'Intel Cyclone V GX Starter Kit',
-  'Intel Stratix 10 GX FPGA Dev Kit',
-  'Intel Arria 10 GX Dev Kit',
-  'Intel Agilex F-Series Dev Kit',
-  'Intel MAX 10 Dev Kit',
-  'Intel Nios V Dev Board',
-  'Terasic DE2-115',
-  'Terasic DE5a-Net-DDR4',
-  'Terasic C5G Development Kit',
-  'Terasic TR5 FPGA Kit',
-  'Terasic OpenVINO Starter Kit',
-  'Digilent Basys 3',
-  'Digilent Nexys 4 DDR',
-  'Digilent Nexys A7-100T',
-  'Digilent Nexys Video',
-  'Digilent Arty A7-35T',
-  'Digilent Arty A7-100T',
-  'Digilent Arty S7-50',
-  'Digilent Arty Z7-20',
-  'Digilent Arty Z7-10',
-  'Digilent Cmod A7-35T',
-  'Digilent Cmod S7',
-  'Digilent Cmod A7-15T',
-  'Digilent Zybo Z7-20',
-  'Digilent Zybo Z7-10',
-  'Digilent Genesys 2',
-  'Digilent Genesys ZU',
-  'Digilent Eclypse Z7',
-  'Digilent NetFPGA-SUME',
-  'Digilent PYNQ-Z2',
-  'Digilent PYNQ-Z1',
-  'Lattice ECP5 Versa Dev Kit',
-  'Lattice MachXO3D Dev Kit',
-  'Lattice MachXO3L Starter Kit',
-  'Lattice MachXO3L Breakout',
-  'Lattice iCEstick Eval Kit',
-  'Lattice iCE40UP5K Breakout',
-  'Lattice iCE40 UltraPlus Dev Kit',
-  'Lattice CrossLink-NX Eval Board',
-  'Lattice CrossLinkPlus Evaluation Board',
-  'Lattice CertusPro-NX Eval Kit',
-  'Lattice Platform Manager 2 Eval Kit',
-  'Lattice Avant-E Dev Kit',
-  'Trenz Electronic TE0720 Carrier',
-  'Trenz Electronic TE0808 UltraSOM',
-  'Trenz Electronic TE0820 UltraSoM+',
-  'Trenz Electronic TE0841 Versal',
-  'Trenz Electronic TE0715 Starter',
-  'Opal Kelly XEM7320',
-  'Opal Kelly XEM7350',
-  'Opal Kelly XEM7010',
-  'Opal Kelly XEM3010',
-  'Opal Kelly XEM8310',
-  'Numato Opsis Video Platform',
-  'Numato Saturn Spartan 6',
-  'Numato Skoll Kintex 7',
-  'Numato Narvi Spartan 7',
-  'Numato Katana Kintex 7',
-  'Avnet MicroZed',
-  'Avnet PicoZed',
-  'Avnet Ultra96-V2',
-  'Avnet UltraZed-EV',
-  'Avnet UltraZed-EG',
-  'Avnet MiniZed',
-  'Avnet Zynq UltraScale+ RFSoC Dev Kit',
-  'Avnet RFSOC Explorer Kit',
-  'Avnet Smart Edge AI Kit',
-  'Enclustra Mars ZX3',
-  'Enclustra Mercury ZX1',
-  'Enclustra Trion T20F256 Dev Kit',
-  'Enclustra PE1 Base Board',
-  'Enclustra PE3 Base Board',
-  'Microsemi SmartFusion2 Starter Kit'
-];
+};
 
 export const boards: Board[] = [
-  ...createBoards(arduinoBoards, 'arduino'),
-  ...createBoards(raspberryBoards, 'raspberry-pi'),
-  ...createBoards(fpgaBoards, 'fpga')
+  {
+    id: 'arduino-uno-r3',
+    name: 'Arduino Uno R3',
+    category: 'arduino',
+    manufacturer: 'Arduino',
+    description:
+      'ATmega328P-based development board with USB connectivity and a robust accessory ecosystem for rapid prototyping.',
+    specs: {
+      'Microcontroller': 'ATmega328P',
+      'Clock Speed': '16 MHz',
+      'Flash Memory': '32 KB',
+      'SRAM': '2 KB',
+      'Operating Voltage': '5 V',
+      'GPIO Pins': 14,
+      'PWM Channels': 6,
+      'Analog Inputs': 6
+    },
+    image: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Arduino_Uno_-_R3.jpg',
+    svgFootprint: createFootprintSvg('UNO', 68.6, 53.4, [
+      { x: 3.5, y: 3.6, width: 61.6, height: 4.8, label: 'Digital I/O' },
+      { x: 3.5, y: 44, width: 36, height: 4.8, label: 'Analog In' },
+      { x: 58.5, y: 18, width: 7.6, height: 16, label: 'USB' },
+      { x: 5, y: 18, width: 9.6, height: 14, label: 'Power' }
+    ]),
+    dimensions: { width: 68.6, height: 53.4, thickness: 15 },
+    ioSummary: {
+      digitalPins: 14,
+      analogInputs: 6,
+      communication: ['UART', 'I2C', 'SPI']
+    },
+    power: { supply: '5 V USB / 7–12 V VIN', maxCurrentMa: 500 }
+  },
+  {
+    id: 'arduino-portenta-h7',
+    name: 'Arduino Portenta H7',
+    category: 'arduino',
+    manufacturer: 'Arduino Pro',
+    description:
+      'Dual-core STM32H747XI SOM with Wi-Fi, Bluetooth, high-speed peripherals and industrial temperature ratings.',
+    specs: {
+      'Microcontroller': 'STM32H747XI (Cortex-M7 + Cortex-M4)',
+      'Clock Speed': '480 MHz / 240 MHz',
+      'RAM': '8 MB SDRAM + 1 MB SRAM',
+      'Flash Memory': '16 MB QSPI + 2 MB Flash',
+      'Wireless': 'Wi-Fi 802.11b/g/n, Bluetooth LE',
+      'Security': 'Cryptographic accelerator with secure element'
+    },
+    image: 'https://content.arduino.cc/assets/PortentaH7_product.png',
+    svgFootprint: createFootprintSvg('Portenta', 103.6, 25, [
+      { x: 3, y: 2.4, width: 97.6, height: 3.6, label: 'High-Density IO' },
+      { x: 3, y: 19, width: 30, height: 3.6, label: 'PMIC' },
+      { x: 68, y: 18.5, width: 28, height: 4, label: 'USB-C' }
+    ]),
+    dimensions: { width: 103.6, height: 25, thickness: 13 },
+    ioSummary: {
+      digitalPins: 80,
+      analogInputs: 16,
+      communication: ['UART', 'SPI', 'I2C', 'CAN', 'USB HS', 'ETH']
+    },
+    power: { supply: '5 V USB-C / 6–36 V VIN', maxCurrentMa: 1500 }
+  },
+  {
+    id: 'adafruit-feather-rp2040',
+    name: 'Adafruit Feather RP2040',
+    category: 'arduino',
+    manufacturer: 'Adafruit',
+    description:
+      'Feather-format RP2040 board with USB-C, STEMMA QT connector and native CircuitPython support.',
+    specs: {
+      'Microcontroller': 'Raspberry Pi RP2040',
+      'Clock Speed': '133 MHz',
+      'Flash Memory': '8 MB QSPI',
+      'RAM': '264 KB SRAM',
+      'Operating Voltage': '3.3 V',
+      'GPIO Pins': 21,
+      'Analog Inputs': 4,
+      'Connector': 'STEMMA QT / Qwiic'
+    },
+    image: 'https://cdn-learn.adafruit.com/assets/assets/000/103/820/medium640/adafruit_products_rp2040-feather.png?1614286062',
+    svgFootprint: createFootprintSvg('Feather', 50.8, 22.9, [
+      { x: 2.4, y: 2.4, width: 46, height: 3.4, label: 'Feather Header A' },
+      { x: 2.4, y: 17.1, width: 46, height: 3.4, label: 'Feather Header B' },
+      { x: 18, y: 9, width: 14, height: 4.2, label: 'USB-C' }
+    ]),
+    dimensions: { width: 50.8, height: 22.9, thickness: 8 },
+    ioSummary: {
+      digitalPins: 21,
+      analogInputs: 4,
+      communication: ['UART', 'SPI', 'I2C', 'PIO']
+    },
+    power: { supply: 'USB-C 5 V / LiPo 3.7 V', maxCurrentMa: 600 }
+  },
+  {
+    id: 'sparkfun-redboard-artemis',
+    name: 'SparkFun RedBoard Artemis',
+    category: 'arduino',
+    manufacturer: 'SparkFun',
+    description:
+      'Ambiq Apollo3-powered Arduino-compatible board with Bluetooth LE and ultra-low-power performance.',
+    specs: {
+      'Microcontroller': 'Ambiq Apollo3',
+      'Clock Speed': '48 MHz (96 MHz burst)',
+      'Flash Memory': '1 MB',
+      'SRAM': '384 KB',
+      'Operating Voltage': '3.3 V',
+      'Wireless': 'Bluetooth LE 5.0',
+      'GPIO Pins': 23
+    },
+    image: 'https://cdn.sparkfun.com//assets/parts/1/3/9/6/8/15444-SparkFun_RedBoard_Artemis-01.jpg',
+    svgFootprint: createFootprintSvg('Artemis', 68.6, 53.4, [
+      { x: 4, y: 4, width: 60, height: 5, label: 'GPIO' },
+      { x: 4, y: 44, width: 44, height: 5, label: 'Analog' },
+      { x: 55, y: 20, width: 10, height: 18, label: 'USB-C' }
+    ]),
+    dimensions: { width: 68.6, height: 53.4, thickness: 14 },
+    ioSummary: {
+      digitalPins: 23,
+      analogInputs: 8,
+      communication: ['UART', 'SPI', 'I2C', 'Bluetooth LE']
+    },
+    power: { supply: 'USB-C 5 V / 3.3 V regulated', maxCurrentMa: 600 }
+  },
+  {
+    id: 'raspberry-pi-5-8gb',
+    name: 'Raspberry Pi 5 (8 GB)',
+    category: 'raspberry-pi',
+    manufacturer: 'Raspberry Pi',
+    description:
+      'Latest flagship Raspberry Pi single-board computer delivering desktop-class Arm performance with PCIe and dual 4K HDMI.',
+    specs: {
+      CPU: '2.4 GHz quad-core Cortex-A76',
+      GPU: 'VideoCore VII @ 1 GHz',
+      RAM: '8 GB LPDDR4X',
+      Networking: 'Wi-Fi 6, Bluetooth 5.0, Gigabit Ethernet',
+      Storage: 'microSD, PCIe 2.0 x1',
+      USB: '2× USB 3.0, 2× USB 2.0',
+      Video: '2× micro-HDMI 2.1 (4K60)'
+    },
+    image: 'https://www.raspberrypi.com/app/uploads/2023/10/Raspberry-Pi-5-angled.png',
+    svgFootprint: createFootprintSvg('Pi 5', 85, 56, [
+      { x: 5, y: 5, width: 75, height: 6, label: '40-pin GPIO' },
+      { x: 60, y: 18, width: 20, height: 10, label: 'USB 3.0' },
+      { x: 58, y: 34, width: 22, height: 10, label: 'HDMI' },
+      { x: 6, y: 18, width: 14, height: 12, label: 'Power' }
+    ]),
+    dimensions: { width: 85, height: 56, thickness: 17 },
+    ioSummary: {
+      digitalPins: 28,
+      analogInputs: 0,
+      communication: ['GPIO', 'I2C', 'SPI', 'UART', 'PCIe', 'MIPI CSI/DSI']
+    },
+    power: { supply: 'USB-C PD (5 V / 5 A)', maxCurrentMa: 5000 }
+  },
+  {
+    id: 'raspberry-pi-4-model-b-4gb',
+    name: 'Raspberry Pi 4 Model B (4 GB)',
+    category: 'raspberry-pi',
+    manufacturer: 'Raspberry Pi',
+    description:
+      'Widely deployed single-board computer with quad-core Cortex-A72 CPU, dual micro-HDMI and Gigabit networking.',
+    specs: {
+      CPU: '1.5 GHz quad-core Cortex-A72',
+      GPU: 'VideoCore VI',
+      RAM: '4 GB LPDDR4',
+      Networking: 'Wi-Fi 5, Bluetooth 5.0, Gigabit Ethernet',
+      USB: '2× USB 3.0, 2× USB 2.0',
+      Video: '2× micro-HDMI 2.0 (4K30)',
+      Storage: 'microSD'
+    },
+    image: 'https://upload.wikimedia.org/wikipedia/commons/3/3b/Raspberry_Pi_4_Model_B_-_Side.jpg',
+    svgFootprint: createFootprintSvg('Pi 4', 85, 56, [
+      { x: 5, y: 5, width: 75, height: 6, label: '40-pin GPIO' },
+      { x: 58, y: 18, width: 24, height: 10, label: 'USB 3.0' },
+      { x: 58, y: 34, width: 24, height: 10, label: 'micro-HDMI' },
+      { x: 6, y: 18, width: 14, height: 12, label: 'USB-C' }
+    ]),
+    dimensions: { width: 85, height: 56, thickness: 17 },
+    ioSummary: {
+      digitalPins: 28,
+      analogInputs: 0,
+      communication: ['GPIO', 'I2C', 'SPI', 'UART', 'MIPI CSI/DSI']
+    },
+    power: { supply: 'USB-C 5 V / 3 A', maxCurrentMa: 3000 }
+  },
+  {
+    id: 'raspberry-pi-pico-w',
+    name: 'Raspberry Pi Pico W',
+    category: 'raspberry-pi',
+    manufacturer: 'Raspberry Pi',
+    description:
+      'Dual-core RP2040 microcontroller board with integrated Infineon CYW43439 Wi-Fi for low-power connected applications.',
+    specs: {
+      'Microcontroller': 'RP2040',
+      'Clock Speed': '133 MHz',
+      'Flash Memory': '2 MB',
+      'RAM': '264 KB SRAM',
+      Wireless: '2.4 GHz 802.11n Wi-Fi',
+      'Operating Voltage': '1.8–5.5 V',
+      'GPIO Pins': 26
+    },
+    image: 'https://datasheets.raspberrypi.com/picow/PIOP-Pico-W-top.png',
+    svgFootprint: createFootprintSvg('Pico W', 51, 21, [
+      { x: 2.4, y: 2.2, width: 46.2, height: 3.2, label: 'Header A' },
+      { x: 2.4, y: 15.6, width: 46.2, height: 3.2, label: 'Header B' },
+      { x: 18, y: 7.5, width: 14, height: 5, label: 'Wi-Fi' }
+    ]),
+    dimensions: { width: 51, height: 21, thickness: 5 },
+    ioSummary: {
+      digitalPins: 26,
+      analogInputs: 3,
+      communication: ['UART', 'SPI', 'I2C', 'PIO']
+    },
+    power: { supply: 'USB 5 V / VSYS 1.8–5.5 V', maxCurrentMa: 700 }
+  },
+  {
+    id: 'nvidia-jetson-orin-nano',
+    name: 'NVIDIA Jetson Orin Nano 8GB Developer Kit',
+    category: 'raspberry-pi',
+    manufacturer: 'NVIDIA',
+    description:
+      'AI edge computing kit delivering up to 40 TOPS with an Orin Nano module and rich I/O for robotics and vision workloads.',
+    specs: {
+      CPU: '6-core Arm Cortex-A78AE',
+      GPU: '1024-core NVIDIA Ampere',
+      RAM: '8 GB LPDDR5',
+      Storage: '64 GB eMMC, microSD slot',
+      Networking: '2.5 Gb Ethernet, Wi-Fi via M.2',
+      Video: '2× MIPI CSI, 1× DP 1.4a'
+    },
+    image: 'https://developer.nvidia.com/sites/default/files/akamai/embedded/images/jetson-orin-nano-dev-kit-front-angle.png',
+    svgFootprint: createFootprintSvg('Jetson', 100, 80, [
+      { x: 5, y: 5, width: 90, height: 8, label: '40-pin Expansion' },
+      { x: 8, y: 26, width: 30, height: 12, label: 'DP 1.4a' },
+      { x: 62, y: 26, width: 30, height: 12, label: 'USB-C' },
+      { x: 40, y: 58, width: 20, height: 14, label: 'M.2 Key' }
+    ]),
+    dimensions: { width: 100, height: 80, thickness: 25 },
+    ioSummary: {
+      digitalPins: 40,
+      analogInputs: 0,
+      communication: ['PCIe', 'I2C', 'SPI', 'UART', 'CAN', 'GPIO']
+    },
+    power: { supply: 'USB-C 5 V / Barrel 19 V', maxCurrentMa: 6500 }
+  },
+  {
+    id: 'digilent-nexys-a7-100t',
+    name: 'Digilent Nexys A7-100T',
+    category: 'fpga',
+    manufacturer: 'Digilent',
+    description:
+      'Artix-7 FPGA development board with DDR3 memory, dual Ethernet PHYs and rich expansion for digital design education.',
+    specs: {
+      FPGA: 'Xilinx XC7A100T-1CSG324C',
+      Memory: '128 MB DDR3L, 16 MB Quad-SPI Flash',
+      Clocks: '100 MHz on-board oscillator',
+      Connectivity: 'Dual USB-UART/JTAG, 10/100 Ethernet, microSD',
+      Expansion: 'Pmod, XADC, FMC LPC',
+      Power: 'USB or 12 V barrel jack'
+    },
+    image: 'https://digilent.com/reference/_media/nexys-a7/nexys-a7-100t.png',
+    svgFootprint: createFootprintSvg('Nexys A7', 190, 140, [
+      { x: 6, y: 6, width: 70, height: 10, label: 'Pmod Bank A' },
+      { x: 114, y: 6, width: 70, height: 10, label: 'Pmod Bank B' },
+      { x: 10, y: 118, width: 40, height: 12, label: 'Ethernet' },
+      { x: 140, y: 118, width: 40, height: 12, label: 'USB / Power' }
+    ]),
+    dimensions: { width: 190, height: 140, thickness: 20 },
+    ioSummary: {
+      digitalPins: 200,
+      analogInputs: 8,
+      communication: ['GPIO', 'Ethernet', 'USB-UART', 'FMC LPC']
+    },
+    power: { supply: 'USB 5 V / 7–15 V barrel', maxCurrentMa: 2500 }
+  },
+  {
+    id: 'terasic-de10-nano',
+    name: 'Terasic DE10-Nano',
+    category: 'fpga',
+    manufacturer: 'Terasic',
+    description:
+      'Cyclone V SoC FPGA kit combining dual-core ARM Cortex-A9 with FPGA fabric, HDMI, ADC and extensive GPIO headers.',
+    specs: {
+      FPGA: 'Intel Cyclone V SE 5CSEBA6U23I7',
+      Processor: 'Dual-core ARM Cortex-A9 @ 925 MHz',
+      Memory: '1 GB DDR3, 64 MB SDRAM, 8 MB SRAM',
+      Storage: '8 GB microSD (included)',
+      Connectivity: 'HDMI, USB OTG, Gigabit Ethernet, ADC',
+      Expansion: '2× 40-pin GPIO, Arduino Header'
+    },
+    image: 'https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&No=1046&PartNo=1',
+    svgFootprint: createFootprintSvg('DE10-Nano', 120, 70, [
+      { x: 4, y: 4, width: 112, height: 8, label: 'GPIO Bank A' },
+      { x: 4, y: 58, width: 112, height: 8, label: 'GPIO Bank B' },
+      { x: 10, y: 24, width: 30, height: 12, label: 'HDMI' },
+      { x: 78, y: 24, width: 32, height: 12, label: 'Ethernet' }
+    ]),
+    dimensions: { width: 120, height: 70, thickness: 22 },
+    ioSummary: {
+      digitalPins: 148,
+      analogInputs: 6,
+      communication: ['GPIO', 'I2C', 'SPI', 'UART', 'ADC', 'Ethernet']
+    },
+    power: { supply: '5 V barrel jack', maxCurrentMa: 4000 }
+  },
+  {
+    id: 'xilinx-kria-kv260',
+    name: 'Xilinx Kria KV260 Vision AI Starter Kit',
+    category: 'fpga',
+    manufacturer: 'AMD Xilinx',
+    description:
+      'Adaptive SoM featuring Zynq UltraScale+ MPSoC for embedded vision with pre-built acceleration stacks and M.2 expansion.',
+    specs: {
+      MPSoC: 'Zynq UltraScale+ XCK26-SFVC784',
+      Memory: '4 GB LPDDR4, 16 GB eMMC',
+      Connectivity: '2× USB 3.0, Gigabit Ethernet, 2× DisplayPort',
+      Acceleration: 'Vision, robotics, sensor fusion apps',
+      Expansion: '2× SYZYGY, Raspberry Pi header, M.2 Key M'
+    },
+    image: 'https://www.xilinx.com/content/dam/xilinx/imgs/products/adaptive-socs-and-fpgas/kria/kv260-starter-kit-angle.png',
+    svgFootprint: createFootprintSvg('KV260', 120, 77, [
+      { x: 6, y: 6, width: 108, height: 8, label: 'Raspberry Pi Header' },
+      { x: 8, y: 28, width: 32, height: 12, label: 'DP Out' },
+      { x: 80, y: 28, width: 32, height: 12, label: 'USB 3.0' },
+      { x: 42, y: 56, width: 36, height: 12, label: 'SYZYGY' }
+    ]),
+    dimensions: { width: 120, height: 77, thickness: 24 },
+    ioSummary: {
+      digitalPins: 180,
+      analogInputs: 0,
+      communication: ['Gigabit Ethernet', 'USB 3.0', 'DisplayPort', 'MIPI', 'SYZYGY']
+    },
+    power: { supply: '12 V barrel jack', maxCurrentMa: 3500 }
+  },
+  {
+    id: 'lattice-ecp5-versa',
+    name: 'Lattice ECP5 Versa Development Kit',
+    category: 'fpga',
+    manufacturer: 'Lattice Semiconductor',
+    description:
+      'ECP5 FPGA platform with SERDES, dual camera connectors and PCIe for communications and industrial automation designs.',
+    specs: {
+      FPGA: 'LFE5UM-85F-8BG381',
+      Memory: '64 MB SDRAM, 32 Mbit SPI Flash',
+      Connectivity: 'USB, Gigabit Ethernet, DisplayPort, HDMI',
+      Expansion: 'PCIe edge connector, GPIO header, Dual CSI-2',
+      Clocking: '125 MHz and 27 MHz oscillators'
+    },
+    image: 'https://www.latticesemi.com/-/media/LatticeSemi/Documents/DataSheets/ECP5/VersaECP5Board.ashx',
+    svgFootprint: createFootprintSvg('ECP5 Versa', 120, 80, [
+      { x: 6, y: 6, width: 40, height: 10, label: 'GPIO Header' },
+      { x: 74, y: 6, width: 40, height: 10, label: 'DisplayPort' },
+      { x: 10, y: 60, width: 40, height: 12, label: 'PCIe Edge' },
+      { x: 70, y: 60, width: 40, height: 12, label: 'Ethernet / USB' }
+    ]),
+    dimensions: { width: 120, height: 80, thickness: 18 },
+    ioSummary: {
+      digitalPins: 120,
+      analogInputs: 0,
+      communication: ['PCIe', 'Gigabit Ethernet', 'DisplayPort', 'HDMI', 'GPIO']
+    },
+    power: { supply: '12 V barrel jack', maxCurrentMa: 3000 }
+  }
 ];
 
 export const defaultBoard = boards[0];

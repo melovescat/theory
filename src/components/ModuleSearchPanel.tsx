@@ -7,6 +7,7 @@ import { boards } from '../data/boards';
 import { useSimulatorStore } from '../state/simulatorStore';
 import { useModuleImport } from '../hooks/useModuleImport';
 import ModuleIcon from './ModuleIcon';
+import CollapsiblePanel from './CollapsiblePanel';
 
 interface ModuleSearchPanelProps {
   modules: ModuleMetadata[];
@@ -29,36 +30,32 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
     if (!query) return list;
     const lowerQuery = query.toLowerCase();
     return list.filter((module) =>
-      [module.name, module.description, module.sourceUrl].some((field) =>
-        field.toLowerCase().includes(lowerQuery)
-      )
+      [module.name, module.description, module.sourceUrl].some((field) => field.toLowerCase().includes(lowerQuery))
     );
   }, [modules, query, activeCategory]);
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Module & Sensor Explorer</h2>
-          <p className="text-sm text-slate-300">
-            Import components with compatibility guidance and auto-generated schematic + 3D previews.
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-800/60 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+    <CollapsiblePanel
+      id="module-search"
+      title="Module & Sensor Explorer"
+      description="Import components with compatibility guidance and AI-assisted datasheet parsing."
+      headerActions={
+        <div className="rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
           Active board:
           <span className="ml-2 rounded-full bg-brand-500/20 px-2 py-0.5 text-brand-200">{selectedBoard.name}</span>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 pb-4">
         <BsFilter />
         <span>Categories:</span>
         <button
           onClick={() => setActiveCategory('all')}
           className={clsx(
-            'rounded-full border border-slate-700/70 px-3 py-1 transition',
+            'rounded-full border px-3 py-1 transition',
             activeCategory === 'all'
-              ? 'bg-brand-500/30 text-white'
-              : 'bg-slate-900/70 text-slate-300 hover:text-white'
+              ? 'border-brand-400/80 bg-brand-500/30 text-white'
+              : 'border-slate-700/70 bg-slate-900/70 text-slate-300 hover:text-white'
           )}
         >
           All
@@ -68,17 +65,17 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
             key={category.id}
             onClick={() => setActiveCategory(category.id)}
             className={clsx(
-              'rounded-full border border-slate-700/70 px-3 py-1 transition',
+              'rounded-full border px-3 py-1 transition',
               activeCategory === category.id
-                ? 'bg-brand-500/30 text-white'
-                : 'bg-slate-900/70 text-slate-300 hover:text-white'
+                ? 'border-brand-400/80 bg-brand-500/30 text-white'
+                : 'border-slate-700/70 bg-slate-900/70 text-slate-300 hover:text-white'
             )}
           >
             {category.label}
           </button>
         ))}
       </div>
-      <div className="relative">
+      <div className="relative pb-4">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -86,7 +83,7 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
           className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 px-4 py-3 text-sm text-slate-200 shadow-inner shadow-slate-900/70 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40"
         />
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto pr-1 fade-scroll-mask scrollbar-thin">
+      <div className="flex max-h-[480px] flex-col gap-3 overflow-y-auto pr-1 fade-scroll-mask scrollbar-thin">
         {filteredModules.map((module) => {
           const isCompatible = module.compatibleBoards.includes(selectedBoardId);
           return (
@@ -97,14 +94,18 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
                 isCompatible ? 'hover:border-brand-400/60 hover:bg-brand-500/10' : 'opacity-60'
               )}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500/30 to-cyan-400/20 text-brand-200">
                     <ModuleIcon icon={module.icon} className="text-xl" />
                   </div>
-                  <div>
+                  <div className="flex flex-col gap-1">
                     <h3 className="text-base font-semibold text-white">{module.name}</h3>
                     <p className="text-xs text-slate-300 line-clamp-2">{module.description}</p>
+                    <div className="text-[11px] text-slate-400">
+                      {module.electrical.supplyVoltage} · {module.electrical.typicalCurrentMa.toFixed(1)} mA ·{' '}
+                      {module.electrical.interfaces.join(', ')}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 text-xs">
@@ -136,13 +137,13 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
                     const board = boards.find((item) => item.id === boardId);
                     if (!board) return null;
                     return (
-                      <span key={boardId} className="rounded-full bg-slate-800/70 px-2 py-1">
+                      <span key={boardId} className="rounded-full border border-slate-700/70 bg-slate-900/70 px-2 py-1">
                         {board.name}
                       </span>
                     );
                   })}
                   {module.compatibleBoards.length > 6 && (
-                    <span className="rounded-full bg-slate-800/70 px-2 py-1">
+                    <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-2 py-1">
                       +{module.compatibleBoards.length - 6} more
                     </span>
                   )}
@@ -164,14 +165,19 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
             </div>
           );
         })}
+        {filteredModules.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/70 p-6 text-center text-sm text-slate-400">
+            No modules match this filter. Try a different category or search term.
+          </div>
+        )}
       </div>
-      <div className="rounded-2xl border border-dashed border-brand-400/40 bg-slate-900/40 p-4">
+      <div className="mt-4 rounded-2xl border border-dashed border-brand-400/40 bg-slate-900/40 p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-brand-200">
           <BsPlug /> Import from URL
         </h3>
         <p className="mb-3 text-xs text-slate-300">
-          Paste a module or sensor page URL and Simulation Theory will fetch the content, analyze the datasheet using your
-          configured LLM provider, and generate schematic &amp; 3D placeholders automatically.
+          Paste a module or sensor page URL and Simulation Theory will fetch the content, analyze the datasheet using on-device
+          heuristics or your configured transformer, and generate schematic and 3D placeholders automatically.
         </p>
         <form
           className="flex flex-col gap-3"
@@ -198,11 +204,11 @@ const ModuleSearchPanel = ({ modules }: ModuleSearchPanelProps) => {
           >
             {importState.isLoading ? 'Analyzing…' : 'Import via Datasheet AI'}
           </button>
-          {importState.error && <p className="text-xs text-rose-300">{importState.error}</p>}
-          {importState.message && <p className="text-xs text-emerald-300">{importState.message}</p>}
         </form>
+        {importState.message && <p className="mt-3 text-xs text-emerald-300">{importState.message}</p>}
+        {importState.error && <p className="mt-3 text-xs text-rose-300">{importState.error}</p>}
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 };
 
