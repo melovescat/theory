@@ -2,6 +2,21 @@ import { useState } from 'react';
 import type { ModuleMetadata } from '../types';
 import { boards } from '../data/boards';
 
+declare global {
+  interface Window {
+    simulationTheory?: {
+      transformImportedModule?: (
+        context: {
+          url: string;
+          boardId: string;
+          content: string;
+          defaultModule: ModuleMetadata;
+        }
+      ) => Promise<Partial<ModuleMetadata> | void> | Partial<ModuleMetadata> | void;
+    };
+  }
+}
+
 interface ImportState {
   isLoading: boolean;
   error?: string;
@@ -60,6 +75,60 @@ const buildModuleFromContent = (url: string, content: string, boardId: string): 
   };
 };
 
+interface TransformerResult {
+  module?: Partial<ModuleMetadata>;
+  message?: string;
+}
+
+const getTransformerEndpoint = () =>
+  (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env
+    ? (import.meta as unknown as { env: Record<string, string> }).env.VITE_IMPORT_TRANSFORM_ENDPOINT
+    : undefined);
+
+const getTransformerToken = () =>
+  (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env
+    ? (import.meta as unknown as { env: Record<string, string> }).env.VITE_IMPORT_TRANSFORM_TOKEN
+    : undefined);
+
+const callExternalTransformer = async (
+  payload: { url: string; boardId: string; content: string; module: ModuleMetadata }
+): Promise<TransformerResult | null> => {
+  const endpoint = getTransformerEndpoint();
+  if (!endpoint) return null;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getTransformerToken() ? { Authorization: `Bearer ${getTransformerToken()}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Transformer request failed with status ${response.status}`);
+    }
+
+    const data: unknown = await response.json();
+    if (data && typeof data === 'object') {
+      const candidate = (data as TransformerResult).module ?? (data as Partial<ModuleMetadata>);
+      const message = (data as TransformerResult).message;
+      if (candidate && typeof candidate === 'object') {
+        return {
+          module: candidate,
+          message
+        };
+      }
+      return { message };
+    }
+  } catch (error) {
+    console.warn('External importer transformation failed:', error);
+  }
+
+  return null;
+};
+
 export const useModuleImport = () => {
   const [importState, setImportState] = useState<ImportState>({ isLoading: false });
 
@@ -76,11 +145,54 @@ export const useModuleImport = () => {
         throw new Error(`Unable to fetch content: ${response.status}`);
       }
       const text = await response.text();
-      const module = text.length > 200 ? buildModuleFromContent(url, text, boardId) : fallbackModule(url, boardId);
+      let module = text.length > 200 ? buildModuleFromContent(url, text, boardId) : fallbackModule(url, boardId);
+      const notes: string[] = [];
+
+      const externalResult = await callExternalTransformer({ url, boardId, content: text, module });
+      if (externalResult?.module) {
+        module = {
+          ...module,
+          ...externalResult.module,
+          dimensions: {
+            ...module.dimensions,
+            ...externalResult.module.dimensions
+          }
+        };
+      }
+      if (externalResult?.message) {
+        notes.push(externalResult.message);
+      }
+
+      if (window.simulationTheory?.transformImportedModule) {
+        try {
+          const customModule = await window.simulationTheory.transformImportedModule({
+            url,
+            boardId,
+            content: text,
+            defaultModule: module
+          });
+          if (customModule && typeof customModule === 'object') {
+            module = {
+              ...module,
+              ...customModule,
+              dimensions: {
+                ...module.dimensions,
+                ...customModule.dimensions
+              }
+            };
+          }
+        } catch (customError) {
+          console.warn('Custom importer transformation failed:', customError);
+          notes.push('Custom transformer threw an error and was ignored.');
+        }
+      }
+
       addModule(module);
       setImportState({
         isLoading: false,
-        message: 'Module imported with AI-assisted placeholder geometry. Review dimensions before fabrication.'
+        message:
+          notes.join(' ')
+            || 'Module imported with AI-assisted placeholder geometry. Review dimensions before fabrication.'
       });
     } catch (error) {
       console.error(error);

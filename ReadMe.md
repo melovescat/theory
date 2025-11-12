@@ -76,7 +76,14 @@ The repository ships with a GitHub Actions workflow that builds the Vite project
 
 The importer relies on the free [`r.jina.ai`](https://r.jina.ai/) proxy to bypass common CORS restrictions for public datasheets. For private endpoints, or if the proxy is unavailable, Simulation Theory automatically creates a placeholder module so you can continue planning without interruption.
 
-You can extend the importer to call any LLM or custom API by editing `src/hooks/useModuleImport.ts` and injecting your own transformation logic.
+### Advanced importer customization
+
+The importer now supports two extension points so teams can blend in-house AI services or domain-specific heuristics without forking the core logic:
+
+- **HTTP transformer endpoint:** Set `VITE_IMPORT_TRANSFORM_ENDPOINT` (and optionally `VITE_IMPORT_TRANSFORM_TOKEN`) in a `.env` file. When present, every import request is POSTed to your service as JSON (`{ url, boardId, content, module }`). Return either a `module` object with overrides (name, description, dimensions, etc.) or plain overrides to merge into the auto-generated placeholder. Include a `message` field to surface human-readable notes in the UI.
+- **Runtime hook:** Attach `window.simulationTheory.transformImportedModule` from a custom script tag to synchronously or asynchronously tweak the default module object before it is added to the workspace. The hook receives `{ url, boardId, content, defaultModule }` and can return partial metadata.
+
+Both extension paths run after the built-in heuristics, so you always receive a fully-formed placeholder module even when external services are unreachable. If a transformer throws an error, the app logs a warning and falls back to the default placeholder to keep the design session unblocked.
 
 ## License
 
